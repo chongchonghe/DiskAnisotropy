@@ -1,0 +1,18 @@
+&GEOMETRY
+shape = 1
+para1 = 0.0
+diskRadius = 4000.0
+r0 = 1.0
+h0 = 0.0
+los = 'degree'
+/
+
+&PHYSICS
+lambertian = .true.
+GR = .false.
+rNS = 3.0
+/
+
+&OTHERS
+debug = .false.
+/
