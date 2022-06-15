@@ -1,5 +1,7 @@
 ! main.f95
 ! Date: Jan. 12, 2018
+! Last edit: Apr 8, 2022
+! Author: Chong-Chong He (che1234@umd.edu)
 
 !************************************************************************
 !************************ Variables and functions ***********************
@@ -32,14 +34,15 @@ program main
   real(dp) :: rNS = huge(one)
   real(dp) :: rg
   character(len=10) :: los = 'degree'
-  real(dp) :: directAni, diskAni, reflectedAni
-  real(dp) :: theta0, dtheta0, costheta0, radia_tot
+  real(dp) :: directAni, reflectedAni, persisAni
+  real(dp) :: theta0, dtheta0, costheta0, radia_tot, radia_tot_persis
   integer  :: i
   logical  :: lambertian=.true. ! If true, use Lambert's cosine law
   logical  :: GR=.false.
   real(dp), dimension(Nradius) :: mid, delh, gap, hypotenuse, &
-      height_m, radia_delphi
-  real(dp), dimension(Nradius) :: radia_flux
+       height_m, radia_delphi, radia_flux, radia_delphi_persis, &
+       radia_flux_persis
+  ! persistent_flux
 
   namelist / GEOMETRY / shape, para1, diskRadius, r0, h0, los
   namelist / PHYSICS / lambertian, GR, rNS
@@ -51,7 +54,7 @@ program main
 
   rg = one / rNS ! normalize length units to rNS
 
-  write (*,*) 'Running with the following parameters:'
+  write (*,*) '# Running with the following parameters:'
   write (*,3) '     shape = ', shape
   write (*,9) '     para1 = ', para1
   write (*,4) 'lambertian = ', lambertian
@@ -61,26 +64,30 @@ program main
   write (*,9) 'radius(outer) = ', diskRadius
   write (*,9) ' height(inner) = ', h0
 8 format (1X, A20, F20.10, " rNS")
-9 format (1X, A20, F20.10)
-3 format (1X, A20, I20)
-4 format (1X, A20, L20)
+9 format (1X, "# ", A20, F20.10)
+3 format (1X, "# ", A20, I20)
+4 format (1X, "# ", A20, L20)
 
   directAni = zero
-  diskAni = zero
+  ! diskAni = zero
   reflectedAni = zero
 
-  write (*,*)
-  write (*,*) "Calculating radiation onto the disk..."
+  write (*,*) "# "
+  write (*,*) "# Calculating radiation onto the disk..."
   call radiation(shape, diskRadius, para1, h0, r0, rg, lambertian, GR, &
       radia_delphi, radia_flux, radia_tot, mid, delh, gap, hypotenuse, &
-      height_m)
+      height_m, radia_delphi_persis, radia_flux_persis, radia_tot_persis)
+
+  ! ! persistant radiation
+  ! persistent_flux = mid**(-3) * (1 - sqrt(1 / mid))
 
   write (*,9) 'RF_intrinsic = ', radia_tot / pi
 
-  write (*,*)
-  write (*,*) "Calculating anisotropy factors..."
+  write (*,*) "# "
+  write (*,*) "# Calculating anisotropy factors..."
+     
   if (los == 'cos') then
-    write (*,10) 'cos(theta)', 'direct ani', 'reflected ani', 'reflected/direct'
+    write (*,10) 'cos(theta)', 'direct ani', 'reflected ani', 'persistent ani' !, 'reflected/direct'
     do i = 0, Ncos
       costheta0 = real(i, dp) / real(Ncos, dp)
       theta0 = acos(costheta0)
@@ -88,24 +95,22 @@ program main
           GR, rg, directAni)
       call disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, reflectedAni, &
           theta0, lambertian, GR, rg)
-      !      radia_delphi = zero
-      !      call disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, diskAni, &
-      !          theta0_rad, Ntheta0)
-      write (*,6) costheta0, directAni, reflectedAni, reflectedAni / directAni
+      call disk(mid, delh, gap, hypotenuse, height_m, radia_delphi_persis, persisAni, &
+          theta0, lambertian, GR, rg)
+      write (*,6) costheta0, directAni, reflectedAni, 2 * pi * persisAni !, reflectedAni / directAni
     end do
   else
     dtheta0 = pi / 2.0_dp / Ndegree
     theta0 = zero
-    write (*,10) 'degree', 'direct ani', 'reflected ani', 'reflected/direct'
+    write (*,10) 'degree', 'direct ani', 'reflected ani', 'persistent ani' !, 'reflected/direct'
     do i = 0, Ndegree
       call direct(r0, h0, radius(Nradius), height(Nradius), theta0, lambertian, &
           GR, rg, directAni)
       call disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, reflectedAni, &
           theta0, lambertian, GR, rg)
-!      radia_delphi = zero
-!      call disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, diskAni, &
-!          theta0_rad, Ntheta0)
-      write (*,7) i, directAni, reflectedAni, reflectedAni / directAni
+      call disk(mid, delh, gap, hypotenuse, height_m, radia_delphi_persis, persisAni, &
+          theta0, lambertian, GR, rg)
+      write (*,7) i, directAni, reflectedAni, 2 * pi * persisAni !, reflectedAni / directAni
       theta0 = theta0 + dtheta0
     end do
   end if
@@ -126,7 +131,10 @@ program main
 
 6 format (1X, F14.2, F18.12, F18.12, F18.12)
 7 format (1X, I14, F18.12, F18.12, F18.12)
-10 format (1X, A14, A18, A18, A18)
+10 format (1X, "# ", A14, A18, A18, A18)
+! 6 format (1X, F14.2, F18.12, F18.12)
+! 7 format (1X, I14, F18.12, F18.12)
+! 10 format (1X, A14, A18, A18)
 
 end program main
 
@@ -213,7 +221,7 @@ end module functions
 
 subroutine radiation(shape, diskRadius, para1, h0, r0, rg, lambertian, GR, &
     radia_delphi, radia_flux, radia_tot, mid, delh, gap, hypotenuse, &
-    height_m)
+    height_m, radia_delphi_persis, radia_flux_persis, radia_tot_persis)
   ! Calculate the radiation distribution onto the disk surface
 
   use functions
@@ -223,10 +231,11 @@ subroutine radiation(shape, diskRadius, para1, h0, r0, rg, lambertian, GR, &
   integer, intent(in)  :: shape ! =1 for flat disk; =2 for inclined disk
   real(dp), intent(in) :: diskRadius, para1, h0, r0, rg
   logical, intent(in) :: lambertian, GR
-  real(dp), intent(out), dimension(Nradius) :: radia_delphi, radia_flux
+  real(dp), intent(out), dimension(Nradius) :: radia_delphi, radia_flux, &
+       radia_delphi_persis, radia_flux_persis
   real(dp), intent(out), dimension(Nradius) :: mid, delh, gap, hypotenuse, &
       height_m
-  real(dp), intent(out) :: radia_tot
+  real(dp), intent(out) :: radia_tot, radia_tot_persis
 
   ! Data dictionary: local variables
   real(dp), parameter :: del_phi = pi / 2 / Nphi ! On disk plane
@@ -328,7 +337,14 @@ subroutine radiation(shape, diskRadius, para1, h0, r0, rg, lambertian, GR, &
   radia_tot = sum(radia_delphi) * 4 * Nphi ! the intrinsic reflection fraction
   radia_flux = radia_delphi / area ! flux as a function of radius
 
+  ! persistent
+  radia_flux_persis = mid**-3 * (1 - sqrt(1 / mid))
+  radia_delphi_persis = radia_flux_persis * area
+  radia_tot_persis = sum(radia_delphi_persis) * 4 * Nphi
+  radia_delphi_persis = radia_delphi_persis / radia_tot_persis 
+
 end subroutine radiation
+
 
 !************************************************************************
 !***************************** Main program *****************************
@@ -506,6 +522,7 @@ end subroutine direct
 
 subroutine disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, diskAni, &
     theta0, lambertian, GR, rg)
+  ! Calculate reflected radiation
 
   use functions
   implicit none
@@ -581,7 +598,7 @@ subroutine disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, diskAni, &
         !            if (.not. shape == 1) then
         if (.not. all(abs(height_m) < 1e-14)) then
           print *, ""
-          print *, "Fail! GR = .true. only supports flat disk"
+          print *, "Fail! GR = .true. only supports flat disks"
           call exit(-1)
         end if
         ! psi and alpha
@@ -645,7 +662,7 @@ subroutine disk(mid, delh, gap, hypotenuse, height_m, radia_delphi, diskAni, &
     !   if (phi > pi) exit
     ! end do
 
-    diskAni = totflux * 2 ! diskAni must be inout
+    diskAni = totflux * 2 
 !  end do l1
 
 end subroutine disk
