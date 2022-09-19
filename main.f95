@@ -63,7 +63,7 @@ program main
   write (*,9) ' radius(inner) = ', r0
   write (*,9) 'radius(outer) = ', diskRadius
   write (*,9) ' height(inner) = ', h0
-8 format (1X, A20, F20.10, " rNS")
+8 format (1X, "# ", A20, F20.10)
 9 format (1X, "# ", A20, F20.10)
 3 format (1X, "# ", A20, I20)
 4 format (1X, "# ", A20, L20)
@@ -87,7 +87,7 @@ program main
   write (*,*) "# Calculating anisotropy factors..."
      
   if (los == 'cos') then
-    write (*,10) 'cos(theta)', 'direct ani', 'reflected ani', 'persistent ani' !, 'reflected/direct'
+    write (*,10) 'cos(theta)', 'inv. direct ani', 'inv. reflected ani', 'inv. persistent ani' !, 'inv. reflected/inv. direct'
     do i = 0, Ncos
       costheta0 = real(i, dp) / real(Ncos, dp)
       theta0 = acos(costheta0)
@@ -102,7 +102,7 @@ program main
   else
     dtheta0 = pi / 2.0_dp / Ndegree
     theta0 = zero
-    write (*,10) 'degree', 'direct ani', 'reflected ani', 'persistent ani' !, 'reflected/direct'
+    write (*,10) 'degree', 'inv. direct ani', 'inv. reflected ani', 'inv. persistent ani' !, 'reflected/direct'
     do i = 0, Ndegree
       call direct(r0, h0, radius(Nradius), height(Nradius), theta0, lambertian, &
           GR, rg, directAni)
@@ -116,22 +116,22 @@ program main
   end if
 
 !  if (los == 'cos') then
-!    write (*,10) 'radian', 'direct ani', 'reflected ani', 'reflected/direct'
+!    write (*,10) 'radian', 'inv. direct ani', 'inv. reflected ani', 'reflected/direct'
 !    do i = 0, Ntheta0
 !      write (*,6) theta0_rad(i), directAni(i), reflectedAni(i), &
 !          reflectedAni(i) / directAni(i)
 !    end do
 !  else
-!    write (*,10) 'degree', 'direct ani', 'reflected ani', 'reflected/direct'
+!    write (*,10) 'degree', 'inverse direct ani', 'reflected ani', 'reflected/direct'
 !    do i = 0, Ntheta0
 !      write (*,7) i, directAni(i), reflectedAni(i), &
 !          reflectedAni(i) / directAni(i)
 !    end do
 !  end if
 
-6 format (1X, F14.2, F18.12, F18.12, F18.12)
-7 format (1X, I14, F18.12, F18.12, F18.12)
-10 format (1X, "# ", A14, A18, A18, A18)
+6 format (1X, F14.2, F20.12, F20.12, F20.12)
+7 format (1X, I14, F20.12, F20.12, F20.12)
+10 format (1X, "# ", A14, A20, A20, A20)
 ! 6 format (1X, F14.2, F18.12, F18.12)
 ! 7 format (1X, I14, F18.12, F18.12)
 ! 10 format (1X, A14, A18, A18)
